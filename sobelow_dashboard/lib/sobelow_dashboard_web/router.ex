@@ -7,6 +7,10 @@ defmodule SobelowDashboardWeb.Router do
 
   scope "/api", SobelowDashboardWeb do
     pipe_through :api
+
+    post "/projects", ProjectController, :create
+    get "/scans/:id", ScanController, :show
+    get "/scans/:id/findings", ScanController, :findings
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
