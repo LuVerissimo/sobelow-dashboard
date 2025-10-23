@@ -5,7 +5,6 @@ defmodule SobelowDashboard.Repo.Migrations.CreateProjects do
     create table(:projects) do
       add :git_url, :string
       add :name, :string
-      add :status, :string, default: "pending"
 
       timestamps(type: :utc_datetime)
     end
