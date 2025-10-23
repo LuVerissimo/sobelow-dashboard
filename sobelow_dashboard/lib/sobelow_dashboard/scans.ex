@@ -297,4 +297,8 @@ defmodule SobelowDashboard.Scans do
   def create_findings(attrs_list) do
     Repo.insert_all(Finding, attrs_list)
   end
+
+  def list_findings_for_scan(scan_id) do
+    Repo.all(from f in Finding, where: f.scan_id == ^scan_id)
+  end
 end
