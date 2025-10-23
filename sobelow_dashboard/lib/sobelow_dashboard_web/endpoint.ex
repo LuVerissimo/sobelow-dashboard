@@ -48,5 +48,8 @@ defmodule SobelowDashboardWeb.Endpoint do
   plug Plug.MethodOverride
   plug Plug.Head
   plug Plug.Session, @session_options
+
+  plug CORSPlug, origin: "http://localhost:5173"
+
   plug SobelowDashboardWeb.Router
 end

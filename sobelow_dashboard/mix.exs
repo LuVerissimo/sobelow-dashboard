@@ -53,7 +53,8 @@ defmodule SobelowDashboard.MixProject do
       {:dns_cluster, "~> 0.2.0"},
       {:bandit, "~> 1.5"},
       {:oban, "~> 2.17"},
-      {:cors_plug, "~> 1.5"}
+      {:cors_plug, "~> 3.0"},
+      {:plug, "~> 1.18"}
     ]
   end
 

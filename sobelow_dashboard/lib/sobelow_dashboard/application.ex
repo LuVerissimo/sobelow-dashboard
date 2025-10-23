@@ -15,7 +15,8 @@ defmodule SobelowDashboard.Application do
       # Start a worker by calling: SobelowDashboard.Worker.start_link(arg)
       # {SobelowDashboard.Worker, arg},
       # Start to serve requests, typically the last entry
-      SobelowDashboardWeb.Endpoint
+      SobelowDashboardWeb.Endpoint,
+      {Oban, Application.fetch_env!(:sobelow_dashboard, Oban)}
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html
