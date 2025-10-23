@@ -1,8 +1,16 @@
 # sobelow-dashboard
 Paste a link to a public GitHub repository, click Scan, and see a dashboard of all the security vulnerabilities found by Sobelow.
 
+### The Stack
+* Backend: Phoenix (Elixir). We'll build a JSON-only API.
 
-# Rough Flow Chart
+* Frontend: React (Vite) with single-page application.
+
+* Database: PostgreSQL. Standard with Phoenix.
+
+* Async Jobs: Oban. We cannot run a 2-minute git clone and scan inside a web request. It must be a background job.
+
+### Rough Flow Chart
 ```mermaid
 flowchart TD
     %% Define Subgraphs for clarity
