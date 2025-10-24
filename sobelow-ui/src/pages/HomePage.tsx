@@ -30,7 +30,7 @@ export const HomePage = () => {
                     type="text"
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
-                    placeholder="https://github.com/user/repo.git"
+                    placeholder="https://github.com/fly-apps/hello_phoenix.git"
                     style={{ width: '300px', padding: '8px', fontSize: '1rem' }}
                 />
                 <button

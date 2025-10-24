@@ -16,9 +16,9 @@ defmodule SobelowDashboard.Scans.ScanWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"scan_id" => scan_id}}) do
     # get data / update status
-    scan = Scans.get_scan!(scan_id) |> Scans.update_scan(%{status: "running"})
+    scan = Scans.get_scan_and_preload_project!(scan_id)
 
-    project = Scans.get_project!(scan.project_id)
+    project = scan.project
 
     tmp_path = Path.join(System.tmp_dir!(), "scan-#{scan.id}")
     File.mkdir_p!(tmp_path)

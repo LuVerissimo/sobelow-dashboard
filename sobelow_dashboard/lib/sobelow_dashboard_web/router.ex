@@ -12,6 +12,8 @@ defmodule SobelowDashboardWeb.Router do
 
     get("/scans/:id", ScanController, :show)
     get("/scans/:id/findings", ScanController, :findings)
+
+    post("/scans/:id/cancel", ScanController, :cancel)
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

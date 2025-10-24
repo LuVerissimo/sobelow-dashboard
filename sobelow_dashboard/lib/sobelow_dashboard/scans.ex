@@ -236,6 +236,11 @@ defmodule SobelowDashboard.Scans do
     end
   end
 
+  def get_scan_and_preload_project!(id) do
+    Repo.get!(Scan, id)
+    |> Repo.preload(:project)
+  end
+
   @doc """
   Creates a scan.
 

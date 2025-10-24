@@ -2,9 +2,13 @@ defmodule SobelowDashboard.Scans.Project do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias SobelowDashboard.Scans.Scan
+
   schema "projects" do
-    field :git_url, :string
-    field :name, :string
+    field(:git_url, :string)
+    field(:name, :string)
+
+    has_many(:scans, Scan)
 
     timestamps(type: :utc_datetime)
   end
