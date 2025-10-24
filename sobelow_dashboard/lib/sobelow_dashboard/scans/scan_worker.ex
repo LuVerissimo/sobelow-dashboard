@@ -6,6 +6,13 @@ defmodule SobelowDashboard.Scans.ScanWorker do
   @impl Oban.Worker
   def timeout(%Oban.Job{args: %{"scan_id" => _scan_id}}), do: :timer.minutes(5)
 
+  def discard(%Oban.Job{args: %{"scan_id" => scan_id}, state: "discarded"}) do
+    # Run when job fails max_attempts
+    with {:ok, scan} <- Scans.get_scan(scan_id) do
+      Scans.update_scan(scan, %{status: "failed"})
+    end
+  end
+
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"scan_id" => scan_id}}) do
     # get data / update status

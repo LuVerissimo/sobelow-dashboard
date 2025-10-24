@@ -13,7 +13,7 @@ defmodule SobelowDashboardWeb.ScanController do
   end
 
   def findings(conn, %{"id" => id}) do
-    findings = Scans.list_findings_for_scan(id)
+    findings = Scans.list_findings_for_scan(id, conn.params)
 
     conn
     |> put_view(json: FindingsJSON)

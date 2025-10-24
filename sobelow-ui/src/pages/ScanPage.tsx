@@ -17,10 +17,22 @@ interface Finding {
     severity: string;
     description: string;
 }
+
+interface FindingsResponse {
+    data: Finding[];
+    page_number: number;
+    total_pages: number;
+    total_entries: number;
+}
+
 export const ScanPage = () => {
     const { scanId } = useParams();
     const [scan, setScan] = useState<Scan | null>(null);
     const [findings, setFindings] = useState<Finding[]>([]);
+
+    const [page, setPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(0);
+    const [totalEntries, setTotalEntries] = useState(0);
 
     useEffect(() => {
         const poll = async () => {
@@ -32,7 +44,8 @@ export const ScanPage = () => {
                 if (scanData.status === 'complete') {
                     clearInterval(intervalId);
                     const findingsRes = await axios.get(
-                        `${API}/scans/${scanId}/findings`
+                        `${API}/scans/${scanId}/findings`,
+                        { params: { page: page } }
                     );
                     setFindings(findingsRes.data.data);
                 } else if (scanData.status === 'failed') {
@@ -49,6 +62,29 @@ export const ScanPage = () => {
 
         return () => clearInterval(intervalId);
     }, [scanId]);
+
+    useEffect(() => {
+        if (scan?.status === 'complete') {
+            const fetchFindings = async () => {
+                try {
+                    const findingsRes = await axios.get<FindingsResponse>(
+                        `${API}/scans/${scanId}/findings`,
+                        {
+                            params: { page: page },
+                        }
+                    );
+
+                    setFindings(findingsRes.data.data);
+                    setTotalPages(findingsRes.data.total_pages);
+                    setTotalEntries(findingsRes.data.total_entries);
+                } catch (err) {
+                    console.error('Failed to fetch findings', err);
+                }
+            };
+
+            fetchFindings();
+        }
+    }, [scan, page]);
 
     if (!scan || scan.status === 'pending' || scan.status === 'running') {
         return (
@@ -69,7 +105,26 @@ export const ScanPage = () => {
 
     return (
         <div style={{ padding: '20px' }}>
-            <h2>Scan Complete! ({findings.length} findings)</h2>
+            <h2>Scan Complete! ({totalEntries} findings)</h2>
+
+            <div style={{ margin: '10px 0' }}>
+                <button
+                    onClick={() => setPage((p) => p - 1)}
+                    disabled={page <= 1}
+                >
+                    Previous
+                </button>
+                <span style={{ margin: '0 10px' }}>
+                    Page {page} of {totalPages}
+                </span>
+                <button
+                    onClick={() => setPage((p) => p + 1)}
+                    disabled={page >= totalPages}
+                >
+                    Next
+                </button>
+            </div>
+
             <table
                 style={{
                     borderCollapse: 'collapse',
