@@ -30,104 +30,108 @@ export const ScanPage = () => {
     const { scanId } = useParams();
     const [scan, setScan] = useState<Scan | null>(null);
     const [findings, setFindings] = useState<Finding[]>([]);
-
     const [page, setPage] = useState(1);
     const [totalPages, setTotalPages] = useState(0);
     const [totalEntries, setTotalEntries] = useState(0);
+    const [loadingFindings, setLoadingFindings] = useState(false);
 
-    const intervalRef = useRef<number | null>(null);
+    const intervalRef = useRef<NodeJS.Timer | null>(null);
+    const abortControllerRef = useRef<AbortController | null>(null);
+
+    const fetchScan = async () => {
+        if (!scanId) return;
+        try {
+            const res = await axios.get<{ data: Scan }>(
+                `${API}/scans/${scanId}`
+            );
+            setScan(res.data.data);
+        } catch (err) {
+            console.error('Failed to fetch scan', err);
+        }
+    };
+
+    const pollScan = () => {
+        // clear any existing interval
+        if (intervalRef.current) clearInterval(intervalRef.current);
+
+        intervalRef.current = setInterval(async () => {
+            await fetchScan();
+        }, 3000);
+    };
 
     const handleCancel = async () => {
-        if (scanId) {
-            try {
-                await axios.post(`${API}/scans/${scanId}/cancel`);
-            } catch (err) {
-                console.error('Failed to cancel scan', err);
-                alert('Could not cancel the scan.');
-            }
-        }
-    };
-
-    useEffect(() => {
-        setScan(null);
-        setFindings([]);
-        setPage(1);
-        setTotalPages(0);
-        setTotalEntries(0);
-
-        if (intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
-    }, [scanId]);
-
-    const poll = async () => {
+        if (!scanId || !scan) return;
         try {
-            const res = await axios.get(`${API}/scans/${scanId}`);
-            const scanData: Scan = res.data.data;
-            setScan(scanData);
+            await axios.post(`${API}/scans/${scanId}/cancel`);
+            setScan({ ...scan, status: 'failed' }); // immediate feedback
         } catch (err) {
-            console.error('Failed to poll status', err);
-
-            if (intervalRef.current) {
-                clearInterval(intervalRef.current);
-                intervalRef.current = null;
-            }
-
-            setScan((prev) =>
-                prev
-                    ? { ...prev, status: 'failed' }
-                    : { id: parseInt(scanId || '0'), status: 'failed' }
-            );
+            console.error('Failed to cancel scan', err);
+            alert('Could not cancel the scan.');
         }
     };
 
+    // --- Polling logic ---
     useEffect(() => {
-        const isPollingNeeded =
-            scan?.status === 'pending' || scan?.status === 'running';
+        if (!scanId) return;
 
-        if (isPollingNeeded && !intervalRef.current) {
-            poll();
-            intervalRef.current = setInterval(poll, 3000);
-        } else if (!isPollingNeeded && intervalRef.current) {
-            clearInterval(intervalRef.current);
-            intervalRef.current = null;
-        }
+        fetchScan();
+        pollScan(); 
 
         return () => {
+            if (intervalRef.current) clearInterval(intervalRef.current);
+        };
+    }, [scanId]);
+
+    // Stop polling when scan reaches a final state
+    useEffect(() => {
+        if (scan?.status === 'complete' || scan?.status === 'failed') {
             if (intervalRef.current) {
                 clearInterval(intervalRef.current);
                 intervalRef.current = null;
             }
-        };
-    }, [scan, scanId]);
+        }
+    }, [scan]);
 
+    // --- Fetch findings when scan is complete or page changes ---
     useEffect(() => {
-        if (scan?.status === 'complete') {
-            const fetchFindings = async () => {
-                try {
-                    const findingsRes = await axios.get<FindingsResponse>(
-                        `${API}/scans/${scanId}/findings`,
-                        {
-                            params: { page: page },
-                        }
-                    );
-                    setFindings(findingsRes.data.data);
-                    setTotalPages(findingsRes.data.total_pages);
-                    setTotalEntries(findingsRes.data.total_entries);
-                } catch (err) {
+        if (scan?.status !== 'complete' || !scanId) return;
+
+        // cancel previous fetch if any
+        if (abortControllerRef.current) abortControllerRef.current.abort();
+        const controller = new AbortController();
+        abortControllerRef.current = controller;
+
+        const fetchFindings = async () => {
+            setLoadingFindings(true);
+            try {
+                const res = await axios.get<FindingsResponse>(
+                    `${API}/scans/${scanId}/findings`,
+                    {
+                        params: { page },
+                        signal: controller.signal,
+                    }
+                );
+                setFindings(res.data.data);
+                setTotalPages(res.data.total_pages);
+                setTotalEntries(res.data.total_entries);
+            } catch (err) {
+                if (!axios.isCancel(err)) {
                     console.error('Failed to fetch findings', err);
                 }
-            };
-            fetchFindings();
-        }
+            } finally {
+                setLoadingFindings(false);
+            }
+        };
+
+        fetchFindings();
+        return () => controller.abort();
     }, [scan, page, scanId]);
 
+    // --- Render ---
     if (!scan || scan.status === 'pending' || scan.status === 'running') {
         return (
             <div style={{ padding: '20px' }}>
-                Scanning project... This may take awhile. Status:{' '}
-                {scan?.status || 'pending'}
+                Scanning project... Status: {scan?.status || 'pending'}
                 <button onClick={handleCancel} style={{ marginLeft: '10px' }}>
                     Cancel
                 </button>
@@ -150,9 +154,8 @@ export const ScanPage = () => {
             {totalEntries > 0 && (
                 <div style={{ margin: '10px 0' }}>
                     <button
-                        onClick={() => setPage((p) => p - 1)}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={page <= 1}
-                        style={{ padding: '5px 10px', marginRight: '5px' }}
                     >
                         Previous
                     </button>
@@ -160,76 +163,45 @@ export const ScanPage = () => {
                         Page {page} of {totalPages}
                     </span>
                     <button
-                        onClick={() => setPage((p) => p + 1)}
+                        onClick={() =>
+                            setPage((p) => Math.min(totalPages, p + 1))
+                        }
                         disabled={page >= totalPages}
-                        style={{ padding: '5px 10px', marginLeft: '5px' }}
                     >
                         Next
                     </button>
                 </div>
             )}
 
-            {findings.length > 0 ? (
-                <table
-                    style={{
-                        borderCollapse: 'collapse',
-                        width: '100%',
-                        border: '1px solid #ddd',
-                        marginTop: '10px',
-                    }}
-                >
-                    <thead style={{ background: '#f4f4f4' }}>
+            {loadingFindings ? (
+                <p>Loading findings...</p>
+            ) : findings.length > 0 ? (
+                <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                    <thead>
                         <tr>
-                            <th
-                                style={{
-                                    border: '1px solid #ddd',
-                                    padding: '8px',
-                                    textAlign: 'left',
-                                }}
-                            >
-                                Severity
-                            </th>
-                            <th
-                                style={{
-                                    border: '1px solid #ddd',
-                                    padding: '8px',
-                                    textAlign: 'left',
-                                }}
-                            >
-                                Type
-                            </th>
-                            <th
-                                style={{
-                                    border: '1px solid #ddd',
-                                    padding: '8px',
-                                    textAlign: 'left',
-                                }}
-                            >
-                                File
-                            </th>
-                            <th
-                                style={{
-                                    border: '1px solid #ddd',
-                                    padding: '8px',
-                                    textAlign: 'left',
-                                }}
-                            >
-                                Line
-                            </th>
-                            <th
-                                style={{
-                                    border: '1px solid #ddd',
-                                    padding: '8px',
-                                    textAlign: 'left',
-                                }}
-                            >
-                                Description
-                            </th>
+                            {[
+                                'Severity',
+                                'Type',
+                                'File',
+                                'Line',
+                                'Description',
+                            ].map((col) => (
+                                <th
+                                    key={col}
+                                    style={{
+                                        border: '1px solid #ddd',
+                                        padding: '8px',
+                                        textAlign: 'left',
+                                    }}
+                                >
+                                    {col}
+                                </th>
+                            ))}
                         </tr>
                     </thead>
                     <tbody>
                         {findings.map((f) => (
-                            <tr key={f.id}>
+                            <tr key={`${f.id}-${page}`}>
                                 <td
                                     style={{
                                         border: '1px solid #ddd',
