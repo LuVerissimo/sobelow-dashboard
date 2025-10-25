@@ -41,7 +41,7 @@ config :phoenix, :json_library, Jason
 
 config :sobelow_dashboard, Oban,
     engine: Oban.Engines.Basic,
-    queues: [default: 10],
+    queues: [default: 15],
     repo: SobelowDashboard.Repo
 
 # Import environment specific config. This must remain at the bottom

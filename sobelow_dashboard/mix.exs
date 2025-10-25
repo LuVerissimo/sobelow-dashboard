@@ -54,7 +54,8 @@ defmodule SobelowDashboard.MixProject do
       {:bandit, "~> 1.5"},
       {:oban, "~> 2.17"},
       {:cors_plug, "~> 3.0"},
-      {:plug, "~> 1.18"}
+      {:plug, "~> 1.18"},
+      {:scrivener_ecto, "~> 2.7"}
     ]
   end
 

@@ -229,6 +229,18 @@ defmodule SobelowDashboard.Scans do
   """
   def get_scan!(id), do: Repo.get!(Scan, id)
 
+  def get_scan(id) do
+    case Repo.get(Scan, id) do
+      nil -> {:error, :not_found}
+      scan -> {:ok, scan}
+    end
+  end
+
+  def get_scan_and_preload_project!(id) do
+    Repo.get!(Scan, id)
+    |> Repo.preload(:project)
+  end
+
   @doc """
   Creates a scan.
 
@@ -298,7 +310,9 @@ defmodule SobelowDashboard.Scans do
     Repo.insert_all(Finding, attrs_list)
   end
 
-  def list_findings_for_scan(scan_id) do
-    Repo.all(from f in Finding, where: f.scan_id == ^scan_id)
+  def list_findings_for_scan(scan_id, params \\ %{}) do
+    query = from(f in Finding, where: f.scan_id == ^scan_id)
+
+    Repo.paginate(query, %{page: params["page"], page_size: params["page_size"] || 50})
   end
 end
